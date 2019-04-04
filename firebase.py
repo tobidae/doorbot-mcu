@@ -1,12 +1,15 @@
 import firebase_admin
-from firebase_admin import credentials, db, messaging
+from firebase_admin import credentials, db, messaging, storage
 from configparser import ConfigParser
 
 pyconfig = ConfigParser()
 
 cred = credentials.Certificate("helpers/google-services.json")
-dbApp = firebase_admin.initialize_app(cred, {'databaseURL': 'https://{0}.firebaseio.com/'
-                                      .format(pyconfig.get('firebase', 'project_name'))})
+project_name = pyconfig.get('firebase', 'project_name')
+dbApp = firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://{0}.firebaseio.com/'.format(project_name),
+    'storageBucket': '{0}.appspot.com'.format(project_name)
+})
 
 
 class Database:
@@ -67,3 +70,18 @@ class CloudMessaging:
         body = kwargs.get('body', None)
         message = messaging.Message(notification=messaging.Notification(title, body), token=user_token)
         return messaging.send(message)
+
+
+class Storage:
+    def __init__(self):
+        self.cred = cred
+        self.dbApp = dbApp
+
+    def upload(self, blob_location, blob_name, folder="videos"):
+        if not blob_location:
+            return
+        cloud_bucket = storage.bucket()
+        content_blob = cloud_bucket.blob(blob_name)
+        content_blob.upload_from_filename(blob_location)
+
+        return content_blob
